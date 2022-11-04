@@ -454,6 +454,7 @@ defmodule Explorer.Etherscan do
         offset: ^offset(options),
         select:
           merge(map(tt, ^@token_transfer_fields), %{
+            token_id: tt.token_id,
             token_ids: tt.token_ids,
             token_name: tkn.name,
             token_symbol: tkn.symbol,
@@ -492,6 +493,7 @@ defmodule Explorer.Etherscan do
           block_number: b.number,
           block_timestamp: b.timestamp,
           confirmations: fragment("? - ?", ^block_height, t.block_number),
+          token_id: tt.token_id,
           token_ids: tt.token_ids,
           token_name: tt.token_name,
           token_symbol: tt.token_symbol,

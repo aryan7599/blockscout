@@ -4719,7 +4719,13 @@ defmodule Explorer.Chain do
         token_transfer in TokenTransfer,
         select: %{
           token_contract_address_hash: token_transfer.token_contract_address_hash,
-          token_id: fragment("unnest(?)", token_transfer.token_ids)
+          token_id:
+            fragment(
+              "CASE WHEN ? IS NOT NULL THEN ? ELSE unnest(?) END",
+              token_transfer.token_id,
+              token_transfer.token_id,
+              token_transfer.token_ids
+            )
         }
       )
 

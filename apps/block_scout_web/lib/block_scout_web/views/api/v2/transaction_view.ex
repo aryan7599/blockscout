@@ -8,7 +8,7 @@ defmodule BlockScoutWeb.API.V2.TransactionView do
   alias Ecto.Association.NotLoaded
   alias Explorer.ExchangeRates.Token, as: TokenRate
   alias Explorer.{Chain, Market}
-  alias Explorer.Chain.{Address, Block, InternalTransaction, Log, Token, Transaction, Wei}
+  alias Explorer.Chain.{Address, Block, InternalTransaction, Log, Token, TokenTransfer, Transaction, Wei}
   alias Explorer.Chain.Block.Reward
   alias Explorer.Counters.AverageBlockTime
   alias Timex.Duration
@@ -95,10 +95,10 @@ defmodule BlockScoutWeb.API.V2.TransactionView do
   def prepare_token_transfer_total(token_transfer) do
     case Helpers.token_transfer_amount_for_api(token_transfer) do
       {:ok, :erc721_instance} ->
-        %{"token_id" => List.first(token_transfer.token_ids)}
+        %{"token_id" => TokenTransfer.single_token_id(token_transfer)}
 
       {:ok, :erc1155_instance, value, decimals} ->
-        %{"token_id" => List.first(token_transfer.token_ids), "value" => value, "decimals" => decimals}
+        %{"token_id" => TokenTransfer.single_token_id(token_transfer), "value" => value, "decimals" => decimals}
 
       {:ok, :erc1155_instance, values, token_ids, decimals} ->
         Enum.map(Enum.zip(values, token_ids), fn {value, token_id} ->

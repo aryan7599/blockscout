@@ -62,15 +62,21 @@ defmodule Explorer.Chain.Token.Instance do
     from(
       i in Instance,
       left_join: tt in TokenTransfer,
-      on:
-        tt.token_contract_address_hash == i.token_contract_address_hash and
-          fragment("? @> ARRAY[?::decimal]", tt.token_ids, i.token_id),
+      on: tt.token_contract_address_hash == i.token_contract_address_hash and ^token_ids_condition(),
       join: to_address in assoc(tt, :to_address),
       where: i.token_contract_address_hash == ^contract_address_hash,
       order_by: [desc: tt.block_number],
       distinct: [desc: i.token_id],
       select: %{i | owner: to_address}
     )
+  end
+
+  defp token_ids_condition do
+    if TokenTransfer.token_ids_migration_completed?() do
+      dynamic([i, tt], fragment("? @> ARRAY[?::decimal]", tt.token_ids, i.token_id))
+    else
+      dynamic([i, tt], i.token_id == tt.token_id or fragment("? @> ARRAY[?::decimal]", tt.token_ids, i.token_id))
+    end
   end
 
   def page_token_instance(query, %PagingOptions{key: {token_id}, asc_order: true}) do

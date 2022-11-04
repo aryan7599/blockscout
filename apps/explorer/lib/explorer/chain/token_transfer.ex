@@ -25,7 +25,7 @@ defmodule Explorer.Chain.TokenTransfer do
   use Explorer.Schema
 
   import Ecto.Changeset
-  import Ecto.Query, only: [from: 2, limit: 2, where: 3]
+  import Ecto.Query, only: [from: 2, limit: 2, where: 3, dynamic: 2]
 
   alias Explorer.Chain.{Address, Block, Hash, TokenTransfer, Transaction}
   alias Explorer.Chain.Token.Instance
@@ -177,7 +177,7 @@ defmodule Explorer.Chain.TokenTransfer do
       from(
         tt in TokenTransfer,
         where: tt.token_contract_address_hash == ^token_address_hash,
-        where: fragment("? @> ARRAY[?::decimal]", tt.token_ids, ^Decimal.new(token_id)),
+        where: ^token_ids_condition(token_id),
         where: not is_nil(tt.block_number),
         preload: [{:transaction, :block}, :token, :from_address, :to_address],
         order_by: [desc: tt.block_number]
@@ -187,6 +187,17 @@ defmodule Explorer.Chain.TokenTransfer do
     |> page_token_transfer(paging_options)
     |> limit(^paging_options.page_size)
     |> Repo.all()
+  end
+
+  defp token_ids_condition(token_id) do
+    if token_ids_migration_completed?() do
+      dynamic([tt], fragment("? @> ARRAY[?::decimal]", tt.token_ids, ^Decimal.new(token_id)))
+    else
+      dynamic(
+        [tt],
+        tt.token_id == ^token_id or fragment("? @> ARRAY[?::decimal]", tt.token_ids, ^Decimal.new(token_id))
+      )
+    end
   end
 
   @spec count_token_transfers_from_token_hash(Hash.t()) :: non_neg_integer()
@@ -206,9 +217,8 @@ defmodule Explorer.Chain.TokenTransfer do
     query =
       from(
         tt in TokenTransfer,
-        where:
-          tt.token_contract_address_hash == ^token_address_hash and
-            fragment("? @> ARRAY[?::decimal]", tt.token_ids, ^Decimal.new(token_id)),
+        where: tt.token_contract_address_hash == ^token_address_hash,
+        where: ^token_ids_condition(token_id),
         select: fragment("COUNT(*)")
       )
 
@@ -218,11 +228,11 @@ defmodule Explorer.Chain.TokenTransfer do
   def page_token_transfer(query, %PagingOptions{key: nil}), do: query
 
   def page_token_transfer(query, %PagingOptions{key: {token_id}, asc_order: true}) do
-    where(query, [tt], fragment("?[1] > ?", tt.token_ids, ^token_id))
+    where(query, [tt], ^token_id_query() > ^token_id)
   end
 
   def page_token_transfer(query, %PagingOptions{key: {token_id}}) do
-    where(query, [tt], fragment("?[1] < ?", tt.token_ids, ^token_id))
+    where(query, [tt], ^token_id_query() < ^token_id)
   end
 
   def page_token_transfer(query, %PagingOptions{key: {block_number, log_index}, asc_order: true}) do
@@ -239,6 +249,14 @@ defmodule Explorer.Chain.TokenTransfer do
       [tt],
       tt.block_number < ^block_number or (tt.block_number == ^block_number and tt.log_index < ^log_index)
     )
+  end
+
+  defp token_id_query do
+    if token_ids_migration_completed?() do
+      dynamic([tt], fragment("?[1]", tt.token_ids))
+    else
+      dynamic([tt], tt.token_id)
+    end
   end
 
   @doc """
@@ -303,5 +321,17 @@ defmodule Explorer.Chain.TokenTransfer do
       [tt],
       tt.block_number < ^block_number
     )
+  end
+
+  def token_ids_migration_completed?, do: Application.get_env(:explorer, :token_ids_migration_completed)
+
+  def single_token_id(token_transfer) do
+    if token_ids_migration_completed?() do
+      token_transfer
+      |> Map.get(:token_ids, [])
+      |> List.first()
+    else
+      Map.get(token_transfer, :token_id)
+    end
   end
 end

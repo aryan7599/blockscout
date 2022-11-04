@@ -6,7 +6,7 @@ defmodule BlockScoutWeb.TransactionView do
   alias BlockScoutWeb.Cldr.Number
   alias Explorer.{Chain, CustomContractsHelpers, Repo}
   alias Explorer.Chain.Block.Reward
-  alias Explorer.Chain.{Address, Block, InternalTransaction, Transaction, Wei}
+  alias Explorer.Chain.{Address, Block, InternalTransaction, TokenTransfer, Transaction, Wei}
   alias Explorer.Counters.AverageBlockTime
   alias Explorer.ExchangeRates.Token
   alias Timex.Duration
@@ -141,6 +141,7 @@ defmodule BlockScoutWeb.TransactionView do
       token: token_transfer.token,
       amount: nil,
       amounts: [],
+      token_id: token_transfer.token_id,
       token_ids: token_transfer.token_ids,
       to_address_hash: token_transfer.to_address_hash,
       from_address_hash: token_transfer.from_address_hash
@@ -155,6 +156,7 @@ defmodule BlockScoutWeb.TransactionView do
       token: token_transfer.token,
       amount: nil,
       amounts: amounts,
+      token_id: nil,
       token_ids: token_transfer.token_ids,
       to_address_hash: token_transfer.to_address_hash,
       from_address_hash: token_transfer.from_address_hash
@@ -168,6 +170,7 @@ defmodule BlockScoutWeb.TransactionView do
       token: token_transfer.token,
       amount: token_transfer.amount,
       amounts: [],
+      token_id: token_transfer.token_id,
       token_ids: token_transfer.token_ids,
       to_address_hash: token_transfer.to_address_hash,
       from_address_hash: token_transfer.from_address_hash

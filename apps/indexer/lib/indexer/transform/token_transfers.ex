@@ -86,7 +86,6 @@ defmodule Indexer.Transform.TokenTransfers do
       to_address_hash: truncate_address_hash(log.third_topic),
       token_contract_address_hash: log.address_hash,
       transaction_hash: log.transaction_hash,
-      token_ids: nil,
       token_type: "ERC-20"
     }
 
@@ -103,17 +102,18 @@ defmodule Indexer.Transform.TokenTransfers do
        when not is_nil(second_topic) and not is_nil(third_topic) and not is_nil(fourth_topic) do
     [token_id] = decode_data(fourth_topic, [{:uint, 256}])
 
-    token_transfer = %{
-      block_number: log.block_number,
-      log_index: log.index,
-      block_hash: log.block_hash,
-      from_address_hash: truncate_address_hash(log.second_topic),
-      to_address_hash: truncate_address_hash(log.third_topic),
-      token_contract_address_hash: log.address_hash,
-      token_ids: [token_id || 0],
-      transaction_hash: log.transaction_hash,
-      token_type: "ERC-721"
-    }
+    token_transfer =
+      %{
+        block_number: log.block_number,
+        log_index: log.index,
+        block_hash: log.block_hash,
+        from_address_hash: truncate_address_hash(log.second_topic),
+        to_address_hash: truncate_address_hash(log.third_topic),
+        token_contract_address_hash: log.address_hash,
+        transaction_hash: log.transaction_hash,
+        token_type: "ERC-721"
+      }
+      |> add_token_id(token_id || 0)
 
     token = %{
       contract_address_hash: log.address_hash,
@@ -135,17 +135,18 @@ defmodule Indexer.Transform.TokenTransfers do
        when not is_nil(data) do
     [from_address_hash, to_address_hash, token_id] = decode_data(data, [:address, :address, {:uint, 256}])
 
-    token_transfer = %{
-      block_number: log.block_number,
-      block_hash: log.block_hash,
-      log_index: log.index,
-      from_address_hash: encode_address_hash(from_address_hash),
-      to_address_hash: encode_address_hash(to_address_hash),
-      token_contract_address_hash: log.address_hash,
-      token_ids: [token_id],
-      transaction_hash: log.transaction_hash,
-      token_type: "ERC-721"
-    }
+    token_transfer =
+      %{
+        block_number: log.block_number,
+        block_hash: log.block_hash,
+        log_index: log.index,
+        from_address_hash: encode_address_hash(from_address_hash),
+        to_address_hash: encode_address_hash(to_address_hash),
+        token_contract_address_hash: log.address_hash,
+        transaction_hash: log.transaction_hash,
+        token_type: "ERC-721"
+      }
+      |> add_token_id(token_id)
 
     token = %{
       contract_address_hash: log.address_hash,
@@ -153,6 +154,13 @@ defmodule Indexer.Transform.TokenTransfers do
     }
 
     {token, token_transfer}
+  end
+
+  defp add_token_id(token_transfer, token_id) do
+    token_id_map =
+      if TokenTransfer.token_ids_migration_completed?(), do: %{token_ids: [token_id]}, else: %{token_id: token_id}
+
+    Map.merge(token_transfer, token_id_map)
   end
 
   defp update_token(nil), do: :ok
@@ -213,18 +221,19 @@ defmodule Indexer.Transform.TokenTransfers do
   def parse_erc1155_params(%{third_topic: third_topic, fourth_topic: fourth_topic, data: data} = log) do
     [token_id, value] = decode_data(data, [{:uint, 256}, {:uint, 256}])
 
-    token_transfer = %{
-      amount: value,
-      block_number: log.block_number,
-      block_hash: log.block_hash,
-      log_index: log.index,
-      from_address_hash: truncate_address_hash(third_topic),
-      to_address_hash: truncate_address_hash(fourth_topic),
-      token_contract_address_hash: log.address_hash,
-      transaction_hash: log.transaction_hash,
-      token_type: "ERC-1155",
-      token_ids: [token_id]
-    }
+    token_transfer =
+      %{
+        amount: value,
+        block_number: log.block_number,
+        block_hash: log.block_hash,
+        log_index: log.index,
+        from_address_hash: truncate_address_hash(third_topic),
+        to_address_hash: truncate_address_hash(fourth_topic),
+        token_contract_address_hash: log.address_hash,
+        transaction_hash: log.transaction_hash,
+        token_type: "ERC-1155"
+      }
+      |> add_token_id(token_id)
 
     token = %{
       contract_address_hash: log.address_hash,

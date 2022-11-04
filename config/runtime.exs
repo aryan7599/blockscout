@@ -357,6 +357,8 @@ config :explorer, Explorer.Account,
     template: System.get_env("ACCOUNT_SENDGRID_TEMPLATE")
   ]
 
+config :explorer, token_ids_migration_completed: System.get_env("TOKEN_IDS_MIGRATION_COMPLETED") == "true"
+
 ###############
 ### Indexer ###
 ###############
